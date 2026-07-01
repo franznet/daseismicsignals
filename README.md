@@ -49,7 +49,7 @@ Additional information:
 3. The root folder contains the following Jupyter Notebook (.ipynb) files:
     - MetricasDA: Calculates data similarity and diversity metrics.
     - t-student: The t-test (or Student’s t-test) to determine whether there is a significant difference between the means of two groups.
-    - tl7_esc2: Model training using transfer learning.
+    - tl7_esc2: Model training and testing using transfer learning.
 
 ## License
 This code is released for non-commercial and research purposes. For commercial use, please contact the authors.
