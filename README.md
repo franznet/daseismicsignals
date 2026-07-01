@@ -16,7 +16,37 @@ Additional information:
     - t-student: The t-test (or Student’s t-test) to determine whether there is a significant difference between the means of two groups.
     - tl7_esc2: Model training using transfer learning.
 
-Requirements:
+## Requirements:
 - Python 3.13+
 - PyTorch 2.9.1+cu130+
 - Obspy 1.4.2+
+
+## Repo Tree
+```
+.
+├── examples
+│   ├── data
+│   │   ├── fl_xyvc.csv
+│   │   └── gt_xyvc.csv
+│   ├── demo_asm.ipynb
+│   └── demo_mgsim.ipynb
+├── figures
+│   ├── asm_synthdata.png
+│   └── mgsim_iterations.png
+├── pyproject.toml
+├── README.md
+├── src
+│   └── multigrid_sgsim
+│       ├── __init__.py
+│       ├── asm.py
+│       ├── mgsim.py
+│       ├── sampling.py
+│       ├── segmenting.py
+│       ├── trendmaking.py
+│       └── utils.py
+└── tests
+    └── test_imports.py
+```
+
+## License
+This code is released for non-commercial and research purposes. For commercial use, please contact the authors.
