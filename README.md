@@ -12,6 +12,36 @@ For more information, please contact us at frayup@gmail.com
 Demonstration of the event classification process, using data augmentation techniques and similarity and diversity metrics.  
 ![ASM example](figures/grabs.png)
 
+## Getting Started
+### Installation
+
+1. Clone the repository and navigate into its folder:
+```bash
+git clone https://github.com/franznet/daseismicsignals.git
+cd daseismicsignals
+```
+2. Create the environment from the file:
+```bash
+conda env create -f environment.yml
+```
+
+3. Activate the new environment (the name is defined inside the .yml file):
+```bash
+conda activate obspy
+```
+
+### Run demo notebooks
+
+Navigate to the daseismicsignals repository you just cloned:
+```bash
+cd daseismicsignals
+```
+Run one of the Python scripts in the DA folder to generate a new dataset, for example:
+```bash
+python da_drifting.py
+```
+However, you must first define the parameters for the data augmentation technique in the same script.
+
 ## Requirements:
 - Python 3.13+
 - PyTorch 2.9.1+cu130+
