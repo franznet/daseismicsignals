@@ -82,4 +82,4 @@ Additional information:
     - tl7_esc2: Model training and testing using transfer learning.
 
 ## License
-This code is released for non-commercial and research purposes. For commercial use, please contact the authors.
+This project is open-source. Please refer to the [LICENSE](LICENSE) file for details.
