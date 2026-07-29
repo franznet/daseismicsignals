@@ -43,7 +43,7 @@ python da_drifting.py
 However, you must first define the parameters for the data augmentation technique in the same script.
 
 ## Requirements:
-- Python 3.13+
+- Python 3.9+
 - PyTorch 2.9.1+cu130+
 - Obspy 1.4.2+
 
