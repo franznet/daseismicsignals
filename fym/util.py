@@ -4,63 +4,63 @@ from obspy import read
 from PIL import Image
 import io
 
-# ========================================= GENERALES =========================================
-# Interseccion de 3 listas
+# ========================================= GENERAL =========================================
+# Intersection of 3 lists
 def intersection(lLista1, lLista2, lLista3):
     return list(set(lLista1) & set(lLista2) & set(lLista3))
 
-# Lista de nombres de archivo simples
+# List of simple file names
 def lista_archivos_simple(sRutaDirectorio:str):
-  # Corregir cadena directorio
+  # Fix directory string
   if sRutaDirectorio[len(sRutaDirectorio)-1]!='/':
     sRutaDirectorio+='/'
-  # Lista de archivos
+  # List of files
   return list(map(os.path.basename, glob.glob(sRutaDirectorio+"*.*")))
 
-# Lista de nombres de archivo comunes en los 3 canales
+# List of common file names for the 3 channels
 def lista_archivos_comunes(sRutaDirectorio:str):
-  # Corregir cadena directorio
+  # Fix directory string
   if sRutaDirectorio[len(sRutaDirectorio)-1]!='/':
     sRutaDirectorio+='/'
-  # Lista de archivos
+  # List of files
   mz=list(map(os.path.basename, glob.glob(sRutaDirectorio+"Z/*.*")))
   me=list(map(os.path.basename, glob.glob(sRutaDirectorio+"EW/*.*")))
   mn=list(map(os.path.basename, glob.glob(sRutaDirectorio+"NS/*.*")))
-  #Lista de archivos son extension
+  # File names without extension
   mz=[i.rsplit('.')[0] for i in mz]
   me=[i.rsplit('.')[0] for i in me]
   mn=[i.rsplit('.')[0] for i in mn]
-  # Interseccion de listas
+  # Intersection of lists
   return intersection(mz, me, mn)
 
-#Lista de archivos en los 3 canales
+# List of files in one channel
 def archivos_canal(sRutaCanal,sArchivo:str, bRutaCompleta:bool=True):
-    # Archivo d canal
+    # Channel file
     mz=list(map(os.path.basename, glob.glob(sRutaCanal+"/Z/"+sArchivo+".*")))[0]
     me=list(map(os.path.basename, glob.glob(sRutaCanal+"/EW/"+sArchivo+".*")))[0]
     mn=list(map(os.path.basename, glob.glob(sRutaCanal+"/NS/"+sArchivo+".*")))[0]
-    # Agregando ruta completa
+    # Adding full path
     if bRutaCompleta:
       mz=sRutaCanal+"/Z/"+mz
       me=sRutaCanal+"/EW/"+me
       mn=sRutaCanal+"/NS/"+mn
-    # Retorno de los 3 canales
+    # Return the 3 channels
     return mz, me, mn
 
-#Lista de archivos en 1 canal
+# List of files in one channel
 def archivos_canal_simple(sRutaDirectorio, sArchivo:str, bRutaCompleta:bool=True):
-  # Corregir cadena directorio
+  # Fix directory string
   if sRutaDirectorio[len(sRutaDirectorio)-1]!='/':
     sRutaDirectorio+='/'
-  # Archivo d canal
+  # Channel file
   mz=list(map(os.path.basename, glob.glob(sRutaDirectorio+sArchivo)))[0]
-  # Agregando ruta completa
+  # Adding full path
   if bRutaCompleta:
     mz=sRutaDirectorio+mz
-  # Retorno de los 3 canales
+  # Return the channel file
   return mz
 
-# Crear ruta de directorios
+# Create directory path
 def create_folders(sDirectory):
   if not os.path.exists(sDirectory):
     os.makedirs(sDirectory)
@@ -79,15 +79,15 @@ def fig2img(fig):
   img = Image.open(buf)
   return img
 
-# ========================================= SEÑAL =========================================
+# ========================================= SIGNAL =========================================
 def signal_preprocess(sRutaArchivo:str):
-  #Apertura de archivo
+  # Open file
   tr = read(sRutaArchivo)[0]
-  # Resampling a 100
+  # Resample to 100
   tr.resample(100.0)
-  # Restando la media de la señal
+  # Subtract the mean from the signal
   tr.data = tr.data-np.mean(tr.data)
-  # Filtro paso alto y paso banda
+  # Highpass and bandpass filter
   tr.filter('highpass', freq=1)
   tr.filter('bandpass', freqmin=1, freqmax=10, corners=10)
 

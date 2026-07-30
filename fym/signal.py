@@ -15,20 +15,20 @@ import torch.nn as nn
 from torchvision import transforms
 from scipy.stats import skew, kurtosis
 
-# Usando backend no interactivo, para escribir en un archivo
+# Using a non-interactive backend for writing files
 #matplotlib.use('agg')
 
-# Clase señal
+# Signal class
 class TSignal(Stream):
   # Constructor
   def __init__(self, sRutaArchivoZ:str, sRutaArchivoE:str=None, sRutaArchivoN:str=None):
-    # Lectura de canal principal
+    # Read primary channel
     super(TSignal, self).__init__(read(sRutaArchivoZ)[0])
     #self.sRuta  = sRutaArchivoZ
     _, sArchivo = os.path.split(sRutaArchivoZ)
     self.nombre = sArchivo.rsplit('.')[0]
     self.ext    = [sArchivo.rsplit('.')[1]]
-    # lectura de los otros canales
+    # Read other channels
     if sRutaArchivoE is not None:
       super(TSignal, self).append(read(sRutaArchivoE)[0])
       _, sArchivo = os.path.split(sRutaArchivoE)
@@ -37,40 +37,40 @@ class TSignal(Stream):
       super(TSignal, self).append(read(sRutaArchivoN)[0])
       _, sArchivo = os.path.split(sRutaArchivoN)
       self.ext.append(sArchivo.rsplit('.')[1])
-  # Copia de objeto
+  # Copy object
   def copy(self):
     return copy.deepcopy(self)
-  # Preproceso obsoleto
+  # Deprecated preprocessing
   def preprocesoOld(self):
-    # Resampling a 100
+    # Resample to 100
     super(TSignal, self).resample(100.0)
-    # Restando la media de la señal
+    # Subtract mean from signal
     for tr in self.traces:
       tr.data = tr.data-np.mean(tr.data)
-    # Filtro paso alto y paso banda
+    # Highpass and bandpass filter
     super(TSignal, self).filter('highpass', freq=1)
     super(TSignal, self).filter('bandpass', freqmin=1, freqmax=10, corners=10)
-  # Preproceso segun recomendación AGU
+  # Preprocessing according to AGU recommendation
   def preproceso(self):
-    # Restando la media de la señal
+    # Subtract mean from signal
     for tr in self.traces:
       tr.data = tr.data-np.mean(tr.data)
-    # Filtro paso alto y paso banda
+    # Highpass and bandpass filter
     super(TSignal, self).filter('highpass', freq=1)
     super(TSignal, self).filter('bandpass', freqmin=1, freqmax=20, corners=10)
-    # Resampling a 100
+    # Resample to 100
     super(TSignal, self).resample(100.0)
-  # Duración señal
+  # Signal duration
   def duracion(self):
     #return self.tr.stats.endtime-self.tr.stats.starttime)
     if len(self.traces)>0:
       return self.traces[0].stats.npts/self.traces[0].stats.sampling_rate
     return -1
-  # Duración señal de canal en segundos
+  # Channel signal duration in seconds
   def duracionCanal(self, sCanal:str):
-    """ Retorna la duraciçon en segundos de la señal en el canla dado.
+    """Return the duration in seconds of the signal for the given channel.
     Args:
-      sCanal (str): Canal: Z,[EW,E,W],[NS,N,S] o equivalente 0,1,2
+      sCanal (str): Channel: Z,[EW,E,W],[NS,N,S] or equivalent 0,1,2
     """
     i=-1
     if sCanal=='Z' or sCanal==0:
@@ -82,12 +82,12 @@ class TSignal(Stream):
     else:
       return None
     return self.traces[i].stats.npts/self.traces[i].stats.sampling_rate
-  # Duración señal de traza
+  # Trace signal duration
   def duracion_traza(self, iIndice:int):
     if len(self.traces)>iIndice:
       return self.traces[iIndice].stats.npts/self.traces[iIndice].stats.sampling_rate
     return -1
-  # Todos los canales tienes la misma duración de tiempo
+  # Check that all channels have the same duration
   def es_misma_duracion_canales(self):
     if len(self.traces)>1:
       iDuracion=None
@@ -99,25 +99,25 @@ class TSignal(Stream):
             return False
     return True
 
-  # Ajustar longitud en tiempo, agregando ceros
+  # Adjust time length by padding with zeros
   def ajuste_tiempo(self, iTiempo:int):
-    # Ajustar todas las trazas
+    # Adjust all traces
     for tr in self.traces:
-      # Tiempo total de señal(segundos)
+      # Total signal time (seconds)
       iTotal=tr.stats.npts/tr.stats.sampling_rate
-      # Duración solicitada es mayor duracion de señal?
+      # Is requested duration longer than signal duration?
       if iTiempo>iTotal:
-        # Tiempo restante
+        # Remaining time
         iT1=int( ((iTiempo - iTotal)*tr.stats.sampling_rate)//2 )
         iT2=int( (iTiempo - iTotal)*tr.stats.sampling_rate - iT1 )
-        # Ajustando data
+        # Adjust data
         tr.data=np.concatenate((np.zeros(iT1, dtype=int), tr.data, np.zeros(iT2, dtype=int)))
       elif iTiempo<iTotal:
-        # Corta data. Queda la parte inicial
+        # Truncate data. Keep initial part
         tr.data=tr.data[0:int(iTiempo*tr.stats.sampling_rate)]
       else:
         pass
-  # Guarda espectrograma sin bordes de un canal, en la ruta especificada
+  # Save a borderless spectrogram for a channel to the specified path
   def espectrograma_guardar_canal(self, sCanal:str, sRutaDirectorio:str, iTamanioPixel:int, sCorrelativo:str=''):
     i=-1
     #sCanal=sCanal.upper()
@@ -132,7 +132,7 @@ class TSignal(Stream):
     else:
       pass
     if i>-1:
-      # Cambiando backend para velocidad
+      # Switch backend for speed
       #backend_orig = plt.get_backend()
       plt.switch_backend('Agg')
       # Plotting
@@ -145,14 +145,14 @@ class TSignal(Stream):
       ax.set_ylim(0.01, 20.0)
       plt.title('')
       plt.savefig(sRutaDirectorio+self.nombre+'.'+self.ext[i]+sCorrelativo+'.png', dpi=100, bbox_inches='tight', pad_inches=0)
-      # Liberar memoria
+      # Release memory
       plt.clf()
-      # Evitar que muestre la imagen en modo interactivo
+      # Prevent interactive display
       plt.close('all')
-      # Restaurando backend original
+      # Restore original backend
       #plt.switch_backend(backend_orig)
 
-  # Guarda espectrograma sin bordes de un canal, en la ruta especificada
+  # Save a borderless trace plot for a channel to the specified path
   def sismograma_guardar_canal(self, sCanal:str, sRutaDirectorio:str, iTamanioPixel:int, sCorrelativo:str=''):
     i=-1
     #sCanal=sCanal.upper()
@@ -187,18 +187,18 @@ class TSignal(Stream):
       #plt.savefig('prueba.png', dpi=100, frameon=False, aspect='normal', bbox_inches='tight', pad_inches=0)
       #plt.savefig(sRutaDirectorio+self.nombre+'.'+self.ext[i]+'.png', dpi=100, frameon=False, aspect='normal', bbox_inches='tight', pad_inches=0)
       plt.savefig(sRutaDirectorio+self.nombre+'.'+self.ext[i]+sCorrelativo+'.png', dpi=100, bbox_inches='tight', pad_inches=0)
-      # Liberar memoria
+      # Release memory
       plt.clf()
-      # Evitar que muestre la imagen en modo interactivo
+      # Prevent interactive display
       plt.close('all')
-  # Promedia señal de los 3 canales en uno solo
+  # Average signal across the 3 channels into one
   def promedio_canales(self, sRutaDirectorio:str=None, sNombreArchivo:str=None):
-    """Retorna traza que promedia los tres canales
+    """Return a trace that averages the three channels.
     Args:
-        sRutaDirectorio (str, optional): Ruta de directorio para guardar traza promedio, por defecto no guarda. Defaults to None.
-        sNombreArchivo (str, optional): Nombre de archivo especifico, por defecto guarda con nombre de traza original. Defaults to None.
+        sRutaDirectorio (str, optional): Directory path to save the averaged trace, defaults to None.
+        sNombreArchivo (str, optional): Specific file name, defaults to original trace name. Defaults to None.
     Returns:
-        [type]: Trace promedio
+        [type]: Averaged trace
     """
     trPromedio=None
     for tr in self.traces:
@@ -208,7 +208,7 @@ class TSignal(Stream):
         trPromedio.data+=tr.data
     trPromedio.data=trPromedio.data/len(self.traces)
     if sRutaDirectorio is not None:
-      # Validando directorio
+      # Validate directory
       if sRutaDirectorio[len(sRutaDirectorio)-1]!='/':
         sRutaDirectorio+='/'
       if sNombreArchivo is None:
@@ -216,14 +216,14 @@ class TSignal(Stream):
       else:
         trPromedio.write(sRutaDirectorio+sNombreArchivo+'.mseed', format="MSEED")
     return trPromedio
-  # Pila de señales de los 3 canales en uno solo
+  # Stack signals from the 3 channels into one
   def apilado_canales(self, sRutaDirectorio:str=None, sNombreArchivo:str=None):
-    """Retorna traza que apila los tres canales
+    """Return a trace that stacks the three channels.
     Args:
-        sRutaDirectorio (str, optional): Ruta de directorio para guardar traza apilada, por defecto no guarda. Defaults to None.
-        sNombreArchivo (str, optional): Nombre de archivo especifico, por defecto guarda con nombre de traza original. Defaults to None.
+        sRutaDirectorio (str, optional): Directory path to save the stacked trace, defaults to None.
+        sNombreArchivo (str, optional): Specific file name, defaults to original trace name. Defaults to None.
     Returns:
-        [type]: Trace promedio
+        [type]: Stacked trace
     """
     trApilado=None
     for tr in self.traces:
@@ -232,7 +232,7 @@ class TSignal(Stream):
       else:
         trApilado.data+=tr.data
     if sRutaDirectorio is not None:
-      # Validando directorio
+      # Validate directory
       if sRutaDirectorio[len(sRutaDirectorio)-1]!='/':
         sRutaDirectorio+='/'
       if sNombreArchivo is None:
@@ -241,45 +241,45 @@ class TSignal(Stream):
         trApilado.write(sRutaDirectorio+sNombreArchivo+'.mseed', format="MSEED")
     return trApilado
 
-  # Normalizar señal
+  # Normalize signal
   def normaliza(self):
-    # Ajustar todas las trazas
+    # Normalize all traces
     #self.traces.normalize()
     for tr in  self.traces:
       tr.normalize()
     '''for tr in self.traces:
-      # Hallamos valores [máximo, mínimo]; el valor absoluto y el valor maximo de array
+      # Find values [maximum, minimum]; absolute value and max value of array
       fMaximo=np.max(np.abs(np.array([np.max(tr.data), np.min(tr.data)])))
-      # Normalizamos señal
+      # Normalize signal
       tr.data = tr.data/fMaximo'''
 
-  # ELimina ruido de inicial en señal que fluctua en el rango [-fRango, fRango]. Aplicarla en señales normalizadas.
-  # La tolerancia (en segundos) se resta al punto inicial y se suma al punto final de corte, para que el corte no sea muy al filo del evento.
-  # Tras recorte tiempo de señal podria se diferente en cada canal, si este tiene más de un canal.
+  # Remove initial noise in signal that fluctuates within range [-fRango, fRango]. Apply on normalized signals.
+  # The tolerance (in seconds) is subtracted from the start cut point and added to the end cut point so the cut is not too close to the event edge.
+  # After trimming, signal length may differ on each channel if there are multiple channels.
   def eliminaRuido(self, fRango:float=0.1, fTolerancia:float=1.0):
-    # Procesar las trazas
+    # Process traces
     for tr in self.traces:
-      # Valores de corte de incio
+      # Start cut values
       xi = 0
       #xc = tr.times("matplotlib")[0]
-      # Buscar punto hasta donde el ruido dura. si oscila entre el rango dado
+      # Find where the noise ends, if it oscillates within the given range
       for i in range(len(tr.data)):
         if abs(tr.data[i])>fRango: break
         else:
           xi = i
           #xc = tr.times("matplotlib")[i]
-      # Valores de corte de final
+      # End cut values
       xf = len(tr.data)-1
       for i in reversed(range(len(tr.data))):
         if abs(tr.data[i])>fRango: break
         else:
           xf = i
-    # Dando tolerancia
+    # Apply tolerance
     if xi-int(tr.stats.sampling_rate*fTolerancia)>0:
       xi=xi-int(tr.stats.sampling_rate*fTolerancia)
     if xf+int(tr.stats.sampling_rate*fTolerancia)<len(tr.data)-1:
       xf=xf+int(tr.stats.sampling_rate*fTolerancia)
-    # Recortar señal
+    # Trim signal
     if not(xi==0 and xf==len(tr.data)-1):
       tr.trim(tr.stats.starttime + tr.times()[xi], tr.stats.starttime + tr.times()[xf])
       #tr.trim(tr.stats.starttime + (xi+1)*(tr.stats.npts/tr.stats.sampling_rate)/len(tr.data)  )
@@ -287,10 +287,9 @@ class TSignal(Stream):
 
   # ===================================== FEATURES  ===============================================
   def features(self, sCanal:str):
-    """[summary]
-      Generar vector de features.
+    """Generate a feature vector.
     Args:
-        sCanal (str): Canal de traza a procesar
+        sCanal (str): Trace channel to process
     """
     i=-1
     if sCanal=='Z' or sCanal==0:
@@ -301,11 +300,11 @@ class TSignal(Stream):
       i=2
     else:
       return None
-    # Array numpy
-    v = np.array(self.duracionCanal(i))                   # Duración en segundos
+    # Numpy array
+    v = np.array(self.duracionCanal(i))                   # Duration in seconds
     v = np.append(v, [
       self.traces[i].stats.npts,            # Frames
-      self.traces[i].stats.sampling_rate,   # Frecuencia de muestreo
+      self.traces[i].stats.sampling_rate,   # Sampling rate
       np.mean(self.traces[i].data),         # Mean
       np.std(self.traces[i].data),          # Standard deviation
       skew(self.traces[i].data),            # Skewness
@@ -316,16 +315,16 @@ class TSignal(Stream):
 
 
   # ================================= DATA AUGMENTATION ===========================================
-  # Agrega rotación/ceros a la señal, ya sea en la parte Inicial, Final o Ambos lados.
+  # Add rotation/zeros to the signal at the start, end, or both sides.
   def daAgregaRotacion(self, fPorcentaje:float=0.1, sUbicacion:str='I'):
-    """ Agrega ceros a la señal, ya sea en la parte Inicial, Final o Ambos lados.
+    """Add zeros to the signal at the start, end, or both sides.
     Args:
-      fPorcentaje (float, optional): Porcentaje de tiempo en relación al tiempo del evento, que se tomara para generar señal cero. Defaults to 0.1=10%.
-      sPosiciones (str, optional):   Posición donne se agregara la señal cero, I=inicio, F=Final o A=Ambos lados. Defaults to 'I'.
+      fPorcentaje (float, optional): Percentage of event duration used to create zero padding. Defaults to 0.1=10%.
+      sPosiciones (str, optional): Location where zero padding is added: I=start, F=end, or A=both sides. Defaults to 'I'.
     """
-    # Procesar las trazas
+    # Process traces
     if sUbicacion in ['I','F','A']:
-      # Agregar array cero
+      # Add zero array
       for tr in self.traces:
         if sUbicacion=='I':
           tr.data=np.concatenate([np.zeros(int(len(tr.data)*fPorcentaje)), tr.data])
@@ -333,45 +332,44 @@ class TSignal(Stream):
           tr.data=np.concatenate([tr.data, np.zeros(int(len(tr.data)*fPorcentaje))])
         else:
           tr.data=np.concatenate([np.zeros(int(len(tr.data)*fPorcentaje)//2), tr.data, np.zeros(int(len(tr.data)*fPorcentaje))//2])
-  # Guarda espectrograma sin bordes de un canal, en la ruta especificada
+  # Save a borderless spectrogram for a channel to the specified path
   def daEspectrogramaSpecAugment(self, sCanal:str, sRutaDirectorio:str, iTamanioPixel:int, sCorrelativo:str='', sColor:str='#00007F',
                                  fFrecuenciaPorcentaje:float=0.1, iFrecuenciaCantidad:int=2, fTiempoPorcentaje:float=0.1, iTiempoCantidad:int=0):
-    """[summary]
-      Generar espectrograsmas modificados con data augmentation SpecAugment, mascaras de frecuencia(horizontal) y tiempo(vertical).
+    """Generate modified spectrograms using SpecAugment data augmentation, frequency (horizontal) and time (vertical) masks.
     Args:
-        sCanal (str): Canal de traza a procesar
-        sRutaDirectorio (str): Ruta de señal en disco
-        iTamanioPixel (int): Tamaño en pixeles de espectrograma, tanto de altura y ancho.
-        sCorrelativo (str, optional): Default ''. Se genera la imagen con el nombre del archivo de señal. Y se concatena este parametro si es diferente de ''
-        fFrecuenciaPorcentaje (float, optional): Defaults 10%. Altura de máscara de frecuencia con referencia a iTamanioPixel.
-                                           Se generara de forma aletatoria del rango (0, 1]*20.
-        iFrecuenciaCantidad (int, optional): Defaults 2. Cantidad de máscaras de frecuencia a generarse.
-        fTiempoPorcentaje (float, optional): Defaults 10%. Anchura de máscara de frecuencia con referencia a iTamanioPixel.
-                                           Se generara de forma aletatoria del rango (0, iTamanioPixel*fTiempoPorcentaje].
-        iTiempoCantidad (int, optional): [description]. Defaults to 0. Cantidad de máscaras de tiempo a generarse.
+        sCanal (str): Trace channel to process
+        sRutaDirectorio (str): Path to save the generated image
+        iTamanioPixel (int): Spectrogram size in pixels for both height and width.
+        sCorrelativo (str, optional): Default ''. The image is generated using the signal file name and this string is appended when non-empty.
+        fFrecuenciaPorcentaje (float, optional): Defaults to 10%. Frequency mask height relative to iTamanioPixel.
+                                           It is generated randomly in the range (0, 1]*20.
+        iFrecuenciaCantidad (int, optional): Defaults to 2. Number of frequency masks to generate.
+        fTiempoPorcentaje (float, optional): Defaults to 10%. Time mask width relative to iTamanioPixel.
+                                           It is generated randomly in the range (0, iTamanioPixel*fTiempoPorcentaje].
+        iTiempoCantidad (int, optional): Defaults to 0. Number of time masks to generate.
     """
     def GeneraMascara(fMaxValor:float, fPorcentaje:float, iCantidad):
-      """ Retorna lista de mascaras en forma de tupla (x0, ancho) de acuerdo a un límite
+      """Return a list of masks as tuples (x0, width) within a limit.
       Args:
-          fMaxValor (float): Máximo valor de rango [0, fMaxValor] parab generar mascaras.
-          fPorcentaje (float): Porcentaje de fMaxValor a considerarse para generera anchos aleatorios.
-          iCantidad ([type]): Cantidad de mascaras a generarse.
+          fMaxValor (float): Maximum range value [0, fMaxValor] for generating masks.
+          fPorcentaje (float): Percentage of fMaxValor to use for generating random widths.
+          iCantidad ([type]): Number of masks to generate.
       Returns:
-          [list]: Lista de mascaras. [(x0, ancho0),(x1, ancho1),...]
+          [list]: List of masks. [(x0, width0),(x1, width1),...]
       """
       lMascara=[]
       for _ in range(iCantidad):
-        bIntersectado=True   # Punto se intersecta
+        bIntersectado=True   # Overlap check
         while bIntersectado:
-          xAncho=(1.0-random())*fPorcentaje*fMaxValor   # Altura de máscara
-          x0=(randint(0, 1000)/1000)*(fMaxValor-xAncho)  # Punto de [0,fMaxValor] de inicio de mascara.
-          # Revisamos si existe intersección con los existentes
-          bIntersectado=False # Asumimos que no hay intersección
+          xAncho=(1.0-random())*fPorcentaje*fMaxValor   # Mask height
+          x0=(randint(0, 1000)/1000)*(fMaxValor-xAncho)  # Start point in [0,fMaxValor] for the mask
+          # Check for intersection with existing masks
+          bIntersectado=False # Assume there is no overlap
           for a, b in lMascara:
             if a<x0<b or a<x0+xAncho<b or x0+xAncho>fMaxValor:
               bIntersectado=True
               break
-        # Agregar a lista de mascaras
+        # Add mask to list
         lMascara.append((x0, x0+xAncho))
       return lMascara
 
@@ -401,7 +399,7 @@ class TSignal(Stream):
     fDuracion=self.duracionCanal(i)
     lMascaraFrecuencia=GeneraMascara(20.0, fFrecuenciaPorcentaje, iFrecuenciaCantidad)
     lMascaraTiempo    =GeneraMascara(fDuracion, fTiempoPorcentaje, iTiempoCantidad)
-    # Pintar
+    # Draw
     #f=open("specaugment.csv", "a")
     for y1, y2 in lMascaraFrecuencia:
       ax.add_patch(Rectangle((0, y1), fDuracion, y2-y1, edgecolor=sColor, facecolor=sColor, fill=True))
@@ -412,78 +410,78 @@ class TSignal(Stream):
     #f.close()
     # ===========================================================================================
     plt.savefig(sRutaDirectorio+self.nombre+'.'+self.ext[i]+sCorrelativo+'.png', dpi=100, bbox_inches='tight', pad_inches=0)
-    # Liberar memoria
+    # Release memory
     plt.clf()
-    # Evitar que muestre la imagen en modo interactivo
+    # Prevent interactive display
     plt.close('all')
     #plt.cla()
     del fig
-  # Generar nuevo sismograma a partir de esta y otro objeto
+  # Generate a new trace from this and another object
   def daAlgortimoGenetico(self, str2:"TSignal", iSegmentoTiempo:int=1, iSegmentoCruce:int=5, bMostrarMensaje:bool=False):
-    """ Genera un nuevo sismograma a partir de este y otro, mediante algoritmos geneticos.
+    """Generate a new trace from this one and another using genetic algorithms.
     Args:
-        str2 (TSignal): Otro objeto del mismo tipo
-        iSegmentoTiempo (int, optional): Tiempo de cada segmento en segundos. Defaults to 1.
-        iSegmentoCruce (int, optional): Número de segmentos de cruce. Defaults to 5.
+        str2 (TSignal): Another object of the same type
+        iSegmentoTiempo (int, optional): Duration of each segment in seconds. Defaults to 1.
+        iSegmentoCruce (int, optional): Number of crossover segments. Defaults to 5.
     """
-    # Retorna lista con indices aleatorio no repetidos de rango preveido
+    # Return a list of unique random indices within the given range
     def listaEnteroAleatorio(iMenor:int, iMaximo:int, iElementos:int):
       lLista=sample(range(iMenor, iMaximo+1), iElementos)
       lLista.sort()
       return lLista
 
-    # Tienen el mismo número de canales
+    # Check that both have the same number of channels
     if len(self.traces)!=len(str2.traces):
       if bMostrarMensaje:
-        print("Error diferente número de canales entre los dos eventos")
+        print("Error different number of channels between the two events")
       return None
-    # Verificar tiempos
+    # Verify segment counts
     if (self.duracion()//iSegmentoTiempo)<iSegmentoCruce or (str2.duracion()//iSegmentoTiempo)<iSegmentoCruce:
       if bMostrarMensaje:
-        print("Número de segmentos insuficintes para cruce, dado el tamaño de segmento")
+        print("Insufficient number of segments for crossover given the segment size")
       return None
-    # Nuevo evento como copia de evento
+    # New event as a copy of the second event
     tr3=str2.copy()
-    # Procesamos trazas
+    # Process traces
     for i, tr in enumerate(self.traces):
-      # Generando listas de puntos de tiempo de cruzamiento y tuplas de rangos correspondientes (CROSS OVER)
+      # Generate crossover time points and corresponding range tuples
       if self.duracionCanal(i)<str2.duracionCanal(i):
         lTiempo=listaEnteroAleatorio(0, int(self.duracionCanal(i)//iSegmentoTiempo)-1, iSegmentoCruce)
       else:
         lTiempo=listaEnteroAleatorio(0, int(str2.duracionCanal(i)//iSegmentoTiempo)-1, iSegmentoCruce)
       lPunto = [(int(t*iSegmentoTiempo*tr.stats.sampling_rate), int((t+1)*iSegmentoTiempo*tr.stats.sampling_rate)) for t in lTiempo]
       for (x,y) in lPunto:
-        # Escala - MUTACION
+        # Scale - MUTATION
         iMax1, iMax2 = np.absolute(self.traces[i].data[x:y]).max(), np.absolute(str2.traces[i].data[x:y]).max()
-        # Reemplazando segmento de cruzamiento y MUTACION(Escala)
+        # Replace crossover segment and MUTATE (scale)
         tr3.traces[i].data[x:y]=self.traces[i].data[x:y]*(iMax2/iMax1)
-        # Promediando segmento(MUTATION - XOR)
+        # Average segment (MUTATION - XOR)
         #for j in range(x+1, y):
         #  tr3.traces[i].data[j]=(tr3.traces[i].data[j]+tr3.traces[i].data[j-1])/2.0
-    # Resultado
+    # Result
     return tr3
-  # Generar nuevo sismograma a partir de esta y otro objeto, modificando tiempos
+  # Generate a new trace from this and another object by modifying time segments
   def daAlgortimoGenetico1(self, str2:"TSignal", fPorcentaje:float=0.3, iSegmentoCruce:int=5, bAjusteSegmentoContiguo:bool=False, bMostrarMensaje:bool=False):
-    """ Genera un nuevo sismograma a partir de este y otro, mediante algoritmos geneticos.
+    """Generate a new trace from this and another using genetic algorithms.
     Args:
-        str2 (TSignal): Otro objeto del mismo tipo
-        fPorcentaje(float, optional): Porcentaje de señal en hijo, (1-fporcentaje) de otra señal en hijo. Defaults to 0.3.
-        iSegmentoCruce (int, optional): Número de segmentos de cruce. Defaults to 5.
-        bAjusteSegmentoContiguo (bool, optional): Por True, se unira segmentos continguos en uno solo. eoc, no. Defauls to False.
+        str2 (TSignal): Another object of the same type
+        fPorcentaje(float, optional): Percentage of the signal from self in the child; (1-fPorcentaje) from the other signal. Defaults to 0.3.
+        iSegmentoCruce (int, optional): Number of crossover segments. Defaults to 5.
+        bAjusteSegmentoContiguo (bool, optional): If True, contiguous segments are merged into one. Defaults to False.
     """
-    # Retorna lista con indices aleatorio no repetidos de rango preveido. Incluye rangos más
+    # Return a list of unique random indices within the given range. Includes wider ranges.
     def listaEnteroAleatorio(iMenor:int, iMaximo:int, iElementos:int):
       lLista=sample(range(iMenor, iMaximo+1), iElementos)
       lLista.sort()
       return lLista
-    # Retorna si existen segmentos contiguos. [..., (0, 200), (200, 400), ...]
+    # Return whether contiguous segments exist. [..., (0, 200), (200, 400), ...]
     def bExisteSegmentoContiguo(lstSegmento:list):
       if(len(lstSegmento)>1):
         for i in range(len(lstSegmento)-1):
           if(lstSegmento[i][1]==lstSegmento[i+1][0]):
             return True
       return False
-    # Une todos los segmentos contiguos existentes. [..., (0, 200), (200, 400), ...] => [..., (0, 400), ...]
+    # Merge all existing contiguous segments. [..., (0, 200), (200, 400), ...] => [..., (0, 400), ...]
     def UneSegmentoContiguo(lstSegmento:list):
       while bExisteSegmentoContiguo(lstSegmento):
         for i in range(len(lstSegmento)-1):
@@ -492,92 +490,92 @@ class TSignal(Stream):
             lstSegmento.pop(i+1) #del lstSegmento[i+1]
             break
 
-    # Tienen el mismo número de canales
+    # Check that both have the same number of channels
     if len(self.traces)!=len(str2.traces):
       if bMostrarMensaje:
-        print("Error diferente número de canales entre los dos eventos")
+        print("Error different number of channels between the two events")
       return None
-    # Nuevo evento como copia de evento
+    # New event as a copy of the second event
     tr3=str2.copy()
-    # Procesamos trazas
+    # Process traces
     for i, _ in enumerate(self.traces):
-      # Calculando tamaños de segmentos
+      # Calculate segment sizes
       iSegmentoSize1=int(self.traces[i].data.size*fPorcentaje/iSegmentoCruce)
       iSegmentoSize2=int(str2.traces[i].data.size*fPorcentaje/iSegmentoCruce)
-      # Verificar tiempo de segmentos de cruce
+      # Verify crossover segment size
       if iSegmentoSize1==0 or iSegmentoSize2==0:
         if bMostrarMensaje:
-          print('iSegmentoSize=0: Tamaño de segmento de cruce igual a cero')
+          print('iSegmentoSize=0: Crossover segment size is zero')
         return None
-      lTiempo=listaEnteroAleatorio(0, int(self.traces[i].data.size//iSegmentoSize1)-1, iSegmentoCruce) # Puntos de corte en 1
-      lPunto1 = [(int(t*iSegmentoSize1), int((t+1)*iSegmentoSize1)) for t in lTiempo]     # Segmentos de corte en 1
-      lPunto2 = [(int(t*iSegmentoSize2), int((t+1)*iSegmentoSize2)) for t in lTiempo]     # Segmentos de corte en 2
-      # Ajuste segementos contiguos
+      lTiempo=listaEnteroAleatorio(0, int(self.traces[i].data.size//iSegmentoSize1)-1, iSegmentoCruce) # Cut points in signal 1
+      lPunto1 = [(int(t*iSegmentoSize1), int((t+1)*iSegmentoSize1)) for t in lTiempo]     # Segments in signal 1
+      lPunto2 = [(int(t*iSegmentoSize2), int((t+1)*iSegmentoSize2)) for t in lTiempo]     # Segments in signal 2
+      # Adjust contiguous segments
       if(bAjusteSegmentoContiguo):
         UneSegmentoContiguo(lPunto1)
         UneSegmentoContiguo(lPunto2)
-      # Generndo señal nueva
+      # Generate new signal
       for (x1,x2),(y1,y2) in zip(reversed(lPunto1), reversed(lPunto2)):
-        # Escala
+        # Scale
         iMax1, iMax2 = np.absolute(self.traces[i].data[x1:x2]).max(), np.absolute(tr3.traces[i].data[y1:y2]).max()
-        # Reemplazando segmento de cruzamiento y MUTACION(Escala)
-        #tr3.traces[i].data[y1:y2]=self.traces[i].data[x1:x2]*(iMax2/iMax1)  # No funciona
+        # Replace crossover segment and MUTATE (scale)
+        #tr3.traces[i].data[y1:y2]=self.traces[i].data[x1:x2]*(iMax2/iMax1)  # Does not work
         tr3.traces[i].data = np.delete(tr3.traces[i].data, slice(y1,y2))
         tr3.traces[i].data = np.insert(tr3.traces[i].data, y1, self.traces[i].data[x1:x2]*(iMax2/iMax1) )
-    # Resultado
+    # Result
     return tr3
 
-  # Agrega deriva a la señal.
+  # Add drifting to the signal.
   def daDrifting(self, fDeriva:float=0.1):
-    """ Agrega deriva a la señal a las trazas.
+    """Add drift to the signal traces.
     Args:
-      fDeriva (float, optional): Valor de la deriva de la cual se generaran los pasos aleatorios. Defaults to 0.1.
+      fDeriva (float, optional): Drift magnitude used to generate random steps. Defaults to 0.1.
     """
-    # Generando pasos aleatorios
+    # Generate random steps
     vPaso=[]
     vPaso.append(-fDeriva if random()<0.5 else fDeriva)
     for i in range(1, self.traces[0].data.size):
       value = vPaso[i-1] + (-fDeriva if random()<0.5 else fDeriva)
       vPaso.append(value)
 
-    # Agregando a la señal a las trazas
+    # Add drift to the traces
     for tr in self.traces:
       tr.data=np.add(tr.data, np.array(vPaso))
-  # Agrega ruido gausiano a la señal.
+  # Add Gaussian noise to the signal.
   def daJittering(self, fSigma:float=0.2):
-    """ Agrega ruido a la señal a las trazas.
+    """Add noise to the signal traces.
     Args:
-      fSigma (float, optional): Desviación estandar de la distribución del ruido aleatorio. Defaults to 2.
+      fSigma (float, optional): Standard deviation of the random noise distribution. Defaults to 0.2.
     """
-    # Agregando ruido a las trazas
+    # Add noise to the traces
     for tr in self.traces:
-      # Generando ruido gausiano aleatorio
+      # Generate random Gaussian noise
       noise = np.random.normal(0, fSigma, len(tr.data)) #  μ = 0, σ = 2, size = length of x or y. Choose μ and σ wisely.
-      # Agregando ruido a la señal
+      # Add noise to the signal
       tr.data = tr.data + noise   # Since both y and noise are numpy arrays of same size, the addition is done element-wise.
       #tr.data=np.add(tr.data, np.array(vPaso))
   def daScaling(self, fScale:float=1.1):
-    """ Escala la señal de las trazas.
+    """Scale the signal traces.
     Args:
-      fScale (float, optional): Valor de escalamiento a agregar a la señal. Defaults to 1.1.
+      fScale (float, optional): Scaling factor to apply to the signal. Defaults to 1.1.
     """
-    # Escalando señal mediante el parametro de escalación
+    # Scale the signal by the scaling parameter
     for tr in self.traces:
       tr.data=np.multiply(tr.data, fScale)
   def daFlipping(self):
-    """ Invierte señal en eje de la señal(x) multiplicando por -1.
+    """Flip the signal by multiplying by -1.
     """
-    # Escalando señal mediante el parametro de escalación
+    # Flip the signal by scaling with -1
     self.daScaling(-1)
 
   def daInterpolationAE(self, str2:"TSignal", ModeloAE:nn.Module, sCanal:str, fPorcentaje:float=0.5, sRutaDirectorio:str='', bMostrarMensaje:bool=False):
-    """ Genera un nuevo espectrograma a partir de este y otro, mediante interpolación de AutoEncoder.
+    """Generate a new spectrogram from this and another signal using AutoEncoder interpolation.
     Args:
-        str2 (TSignal): Otro objeto de la misma clase
-        ModeloAE: Instancia de la clase autoencoder.AE() que administra un AE.
-        fPorcentaje(float, optional): Porcentaje de la interpolación de las dos señales. Rango [0, 1]. 0=self, 1=str2. Maneja 3 deciamles porcentuales como 45.123%. Defaults to 0.5.
-        sRutaDirectorio (str): Ruta de señal en disco
-        bMostrarMensaje (bool): Mostrar mensajes de error. Defaults to False
+        str2 (TSignal): Another object of the same class
+        ModeloAE: Instance of autoencoder.AE() managing an AE.
+        fPorcentaje(float, optional): Interpolation percentage between the two signals. Range [0, 1]. 0=self, 1=str2. Supports three decimal percentages like 45.123%. Defaults to 0.5.
+        sRutaDirectorio (str): Output path on disk
+        bMostrarMensaje (bool): Show error messages. Defaults to False
     """
 
     i=-1
@@ -592,11 +590,11 @@ class TSignal(Stream):
       i=2
     else:
       if bMostrarMensaje:
-        print("Error en el ingreso de canal de proceso de señales")
+        print("Error in the channel input for signal processing")
       return
 
     plt.switch_backend('Agg')
-    # Espectrogramas para proceso
+    # Spectrograms for processing
     fig = self[i].spectrogram(show=False, cmap='jet', samp_rate=100.0, per_lap=0.95, wlen=1)
     fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
     fig.set_size_inches(224/100, 224/100)
@@ -623,28 +621,28 @@ class TSignal(Stream):
       transforms.ToTensor()
     ])
 
-    # Uniendo las dos imagenes en un array
+    # Combine the two images into an array
     x=torch.stack([transform(img1.convert("RGB")), transform(img2.convert("RGB"))]).to(ModeloAE.device)
-    # Codificando
+    # Encode
     embedding = ModeloAE.modelo.encoder(x)
 
-    # Interpolar las dos incrustaciones y decodificarlas
+    # Interpolate the two embeddings and decode them
     #e = e1*(1-i/10) + e2*(i/10)
     e = embedding[0]*(1-fPorcentaje) + embedding[1]*(fPorcentaje)
     d = ModeloAE.modelo.decoder(torch.stack([e]))
-    # Guardar nuena señal
+    # Save new signal
     imgRes = transforms.ToPILImage()(d[0]).convert("RGB")
     #imgRes.save(sRutaDirectorio+self.nombre+'.'+self.ext[i]+'-'+str(fPorcentaje*100)+'.png')
     imgRes.save(sRutaDirectorio+self.nombre+'.'+self.ext[i]+'-'+"{0:.3f}".format(fPorcentaje*100)+'.png')
 
-    # Liberar memoria
+    # Release memory
     plt.clf()
-    # Evitar que muestre la imagen en modo interactivo
+    # Prevent the image from displaying in interactive mode
     plt.close('all')
     #plt.cla()
     del fig
 
-# Clase lista de senales
+# Signal list class
 class TListSignal:
   # Constructor
   def __init__(self, streams=None):
@@ -653,13 +651,13 @@ class TListSignal:
       streams = [streams]
     if streams:
       self.streams.extend(streams)
-  # Longitud
+  # Length
   def __len__(self):
     return len(self.streams)
-  # No vacio
+  # Non-empty
   def __nonzero__(self):
     return bool(len(self.streams))
-  # Iterador
+  # Iterator
   def __iter__(self):
     return list(self.streams).__iter__()
   # Item
@@ -668,51 +666,51 @@ class TListSignal:
       return self.__class__(streams=self.streams.__getitem__(index))
     else:
       return self.streams.__getitem__(index)
-  # Agregar
+  # Add
   def add(self, st:TSignal):
     if isinstance(st, TSignal):
       self.streams.append(st)
     else:
-      msg = 'Append solamente soporta un simple objeto TSignal como argumento.'
+      msg = 'Append only supports a single TSignal object as argument.'
       raise TypeError(msg)
     return self
-  # Duración mínima de los streams
+  # Minimum duration of the streams
   def duration(self):
     iDuracion=[]
     for tr in self.streams:
       iDuracion.append(tr.duracion())
     return min(iDuracion), max(iDuracion)
-  # Duración máxima de los streams
+  # Maximum duration of the streams
   def max_duration(self):
     iDuracion=[]
     for tr in self.streams:
       iDuracion.append(tr.duracion())
     return max(iDuracion)
-  # Duración mínima de los streams
+  # Minimum duration of the streams
   def min_duration(self):
     iDuracion=[]
     for tr in self.streams:
       iDuracion.append(tr.duracion())
     return min(iDuracion)
-  # Duración promedio de los streams
+  # Mean duration of the streams
   def mean_duration(self):
     iDuracion=[]
     for tr in self.streams:
       iDuracion.append(tr.duracion())
     return mean(iDuracion)
-  # Duración mediana de los streams
+  # Median duration of the streams
   def median_duration(self):
     iDuracion=[]
     for tr in self.streams:
       iDuracion.append(tr.duracion())
     return median(iDuracion)
-  # Duración moda de los streams
+  # Mode duration of the streams
   def mode_duration(self):
     iDuracion=[]
     for tr in self.streams:
       iDuracion.append(tr.duracion())
     return mode(iDuracion)
-  # Duración desviación estandar de los streams
+  # Standard deviation of stream durations
   def stdev_duration(self):
     iDuracion=[]
     for tr in self.streams:
@@ -721,7 +719,7 @@ class TListSignal:
       return stdev(iDuracion)
     else:
       return None
-  # Duración^2 varianza de los streams
+  # Variance of stream durations
   def variance_duration(self):
     iDuracion=[]
     for tr in self.streams:
@@ -730,7 +728,7 @@ class TListSignal:
       return variance(iDuracion)
     else:
       return None
-  # Ajustar longitud en tiempo, agregando ceros
+  # Adjust time length by adding zeros
   def ajuste_tiempo(self, iTiempo:int):
     for tr in self.streams:
       tr.ajuste_tiempo(iTiempo)
