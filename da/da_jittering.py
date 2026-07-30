@@ -6,73 +6,73 @@ from fym.signal import TSignal, TListSignal
 from random import randint, choice, sample
 from subprocess import call
 
-# Constantes
+# Constants
 class FLAG_DA:
-  sRutaEntrada = 'escenario2/data/'                             # Carpeta de señales originales MiniSEED
-  sRutaSalida  = 'escenario2/01/data_augmentation_jittering/' # Carpeta de salida de espectrogramas
-  lEvento      = ['HY','LP','TR','VT']                          # Lista de eventos a procesar
+  sRutaEntrada = 'escenario2/data/'                             # Folder of original MiniSEED signals
+  sRutaSalida  = 'escenario2/01/data_augmentation_jittering/' # Output folder for spectrograms
+  lEvento      = ['HY','LP','TR','VT']                          # List of events to process
 
 def generarEventoJittering(sRutaEntrada:str, sRutaSalida:str, dEvento:dict, fSigmaInicio:float=0.2, fSigmaFin:float=None):
-  """Genera imagenes espectrogramas mediante la rotación en rango porcentual definido en ubicaciones AIF sin repeticion.
+  """Generate spectrogram images by applying jittering (noise) within a sigma range.
   Args:
-      sRutaEntrada (str): Carpeta donde se encuentan los eventos ordenados por carpetas Evento
-      sRutaSalida (str): Carpeta donde se generaran los nuevos eventos generados
-      dEvento (dict): Diccionario de eventos y cantidades a generera por evento, Ej. {'HY':2000, 'LP':1500, 'TC':0, 'TR':1800, 'VT':1350}
-      fSigmaInicio (float): Desviación estandar de ruido o valor inicial de rango.
-      fSigmaFin  o (float): desviación estandar de ruido final de rango.
+    sRutaEntrada (str): Folder where events are stored organized by event subfolders
+    sRutaSalida (str): Folder where generated events will be saved
+    dEvento (dict): Dictionary of events and quantities to generate per event, e.g. {'HY':2000, 'LP':1500, 'TC':0, 'TR':1800, 'VT':1350}
+    fSigmaInicio (float): Noise standard deviation start value
+    fSigmaFin (float): Noise standard deviation end value
   """
   if fSigmaFin is None:
     sCarpetaProceso=str(fSigmaInicio)
   else:
     sCarpetaProceso=str(fSigmaInicio)+'-'+str(fSigmaFin)
-  # Leyendo eventos
+  # Reading events
   for sEvento in dEvento:
     print("Generando eventos:", sEvento, fym.now_string())
-    # Leyendo lista de archivo de eventos desde carpeta
+    # Read list of event files from folder
     m=fym.lista_archivos_simple(sRutaEntrada+sEvento)
     if len(m)>0:
-      # Generando lista de tuplas (indiceArchivo, sigma).
+      # Generate list of tuples (fileIndex, sigma)
       lJittering=[]
-      for i in range(len(m)):                                                 # Indice archivo
+      for i in range(len(m)):                                                 # File index
         if fSigmaFin is None:
-          for s in range(dEvento[sEvento]):  # Cantidad
+          for s in range(dEvento[sEvento]):  # Quantity
             lJittering.append((i, fSigmaInicio))
         else:
-          # Generando puntos
-          for s in np.linspace(fSigmaInicio, fSigmaFin, num=dEvento[sEvento]):  # Rango sigma
+          # Generate points across sigma range
+          for s in np.linspace(fSigmaInicio, fSigmaFin, num=dEvento[sEvento]):  # Sigma range
             lJittering.append((i, round(s, 10)))
-        # Generando lista que tiene muestra de items a generar espectrogramas, sin repeticion
+        # Generate a sample list of items to create spectrograms, without repetition
         lMuestra = sample(lJittering, dEvento[sEvento])
-      # Crear carpetas de salida si no existen
+      # Create output folders if they do not exist
       fym.create_folders(sRutaSalida+sCarpetaProceso+'/'+sEvento)
-      # Generando espectrograms la cantidad de la muestra solicitada
+      # Generate spectrograms for the requested sample size
       for iCont, (iArchivo, fSigma) in enumerate(lMuestra):
-        # Abrir evento
+        # Get event file path
         sRuta = fym.archivos_canal_simple(sRutaEntrada+sEvento, m[iArchivo])
-        # Abrir los eventos
+        # Open the event
         tr = TSignal(sRuta)
-        # Preproceso
+        # Preprocess
         tr.preproceso()  #<==============================================================================
-        # Normalizar señales
+        # Normalize signals
         tr.normaliza()
-        # Elimina ruido()
+        # Remove noise (optional)
         #tr.eliminaRuido(fRango=0.1, fTolerancia=1.0)
-        # Generación de nueva señal ==========================================================================
+        # Generate new signal (apply jittering)
         tr.daJittering(fSigma)
-        # Espectrograma guarda en disco
+        # Save spectrogram to disk
         tr.espectrograma_guardar_canal(0, sRutaSalida+sCarpetaProceso+'/'+sEvento, 224,'_'+str(fSigma)+'-'+str(iCont+1))
 
-      # Eliminando de memoria variables
+      # Free variables from memory
       del lJittering
       del lMuestra
-    # Mensaje
+    # Message
     print("Fin de generación de eventos :", sEvento, fym.now_string())
 
 #=============================================== PROCESO ESPECTROGRAMA ESCENARIO 2 20HZ ============================================
-print("Inicio:", fym.now_string())
+print("Start:", fym.now_string())
 #generarEventoJittering(FLAG_DA.sRutaEntrada, FLAG_DA.sRutaSalida, {'HY':2473, 'LP':2109, 'TC':488 ,'TR':2215}, 0.2)
 generarEventoJittering(FLAG_DA.sRutaEntrada, FLAG_DA.sRutaSalida, {'HY':2686, 'LP':2686, 'TC':2686 ,'TR':2686, 'VT':2686}, 0.2)
 #generarEventoJittering(FLAG_DA.sRutaEntrada, FLAG_DA.sRutaSalida, {'HY':13419, 'LP':13419, 'TC':13419 ,'TR':13419, 'VT':13419}, 0.2)
-print("Fin   :", fym.now_string())
+print("End   :", fym.now_string())
 
 

@@ -8,11 +8,11 @@ from subprocess import call
 import pickle
 import os, glob, shutil
 
-# Constantes
+# Constants
 class FLAG_DA:
-  sRutaEntrada = 'escenario2/data/'       # Carpeta de señales originales MiniSEED
-  sRutaSalida  = 'E:/spectrograms224_00/' # Carpeta de salida de espectrogramas
-  lEvento      = ['HY','LP','TR','VT']    # Lista de eventos a procesar
+  sRutaEntrada = 'escenario2/data/'       # Folder of original MiniSEED signals
+  sRutaSalida  = 'E:/spectrograms224_00/' # Output folder for spectrograms
+  lEvento      = ['HY','LP','TR','VT']    # List of events to process
 
 def guarda_lista(nombre_archivo, lista_a_guardar):
   archivo = open(nombre_archivo, "wb")
@@ -26,80 +26,80 @@ def lee_lista(nombre_archivo):
   return lista_leida
 
 def generaMuestraArchivos(sRutaEntrada:str, sRutaSalida:str, dEvento:dict):
-  """Genera una muestra aleatoria de los eventos sin repeticion en carpeta destino.
+  """Generate a random sample of events without repetition into the destination folder.
   Args:
-      sRutaEntrada (str): Carpeta donde se encuentan los eventos originales organizado por carpetas Evento
-      sRutaSalida (str):  Carpeta donde se generaran la muestra de eventos
-      dEvento (dict): Diccionario de eventos y cantidades a generer por evento, Ej. {'HY':2000, 'LP':1500, 'TC':0, 'TR':1800, 'VT':1350}
+      sRutaEntrada (str): Folder where the original events are located organized by event subfolders
+      sRutaSalida (str): Folder where the sampled events will be created
+      dEvento (dict): Dictionary of events and quantities to generate per event, e.g. {'HY':2000, 'LP':1500, 'TC':0, 'TR':1800, 'VT':1350}
   """
-  # Leyendo eventos
+  # Reading events
   for sEvento in dEvento:
     print("Generando muestra de eventos:", sEvento, fym.now_string())
-    # Leyendo lista de archivo de eventos desde carpeta
+    # Read list of event files from folder
     #m=fym.lista_archivos_simple(sRutaEntrada+sEvento)
     m=list(map(os.path.basename, glob.glob(sRutaEntrada+sEvento+"/*.*")))
     if len(m)>0:
-      # Generando lista que tiene muestra de eventos sin repeticion
+      # Generate a list containing a sample of events without repetition
       lMuestra = sample(m, dEvento[sEvento])
-      # Crear carpetas de salida si no existe
+      # Create output folder if it does not exist
       #fym.create_folders(sRutaSalida+sEvento)
       if not os.path.exists(sRutaSalida+sEvento):
         os.makedirs(sRutaSalida+sEvento)
-      # Copiar archivos a ruta de salida
+      # Copy files to output path
       for fArchivo in lMuestra:
         shutil.copy(sRutaEntrada+sEvento+'/'+fArchivo, sRutaSalida+sEvento)
-    # Mensaje
+    # Message
     print("Fin de generación de eventos :", sEvento, fym.now_string())
   return
 
 def generarEventoDrifting(sRutaEntrada:str, sRutaSalida:str, dEvento:dict, fDerivaInicio:int, fDerivaFin:int):
-  """Genera imagenes espectrogramas mediante la rotación en rango porcentual definido en ubicaciones AIF sin repeticion.
+  """Generate spectrogram images by applying drift within a defined percentage range at AIF locations without repetition.
   Args:
-      sRutaEntrada (str): Carpeta donde se encuentan los eventos ordenados por carpetas Evento
-      sRutaSalida (str): Carpeta donde se generaran los nuevos eventos generados
-      dEvento (dict): Diccionario de eventos y cantidades a generera por evento, Ej. {'HY':2000, 'LP':1500, 'TC':0, 'TR':1800, 'VT':1350}
-      fDerivaInicio (float): Valor de deriva o valor inicial de rango).
-      fDerivaFin  o (float): Valor de la deviPorcentaje de tiempo de espacio de rotación final.
+      sRutaEntrada (str): Folder where events are stored organized by event subfolders
+      sRutaSalida (str): Folder where the generated events will be saved
+      dEvento (dict): Dictionary of events and quantities to generate per event, e.g. {'HY':2000, 'LP':1500, 'TC':0, 'TR':1800, 'VT':1350}
+      fDerivaInicio (float): Drift start value (initial range value)
+      fDerivaFin (float): Drift end value (final range value)
   """
-  # Leyendo eventos
+  # Reading events
   for sEvento in dEvento:
     print("Generando eventos:", sEvento, fym.now_string())
-    # Leyendo lista de archivo de eventos desde carpeta
+    # Read list of event files from folder
     m=fym.lista_archivos_simple(sRutaEntrada+sEvento)
     if len(m)>0:
-      # Generando lista de tuplas (indiceArchivo, porcentaje, ubicacion).
+      # Generate list of tuples (fileIndex, percentage)
       lJittering=[]
-      for i in range(len(m)):                                                   # Indice archivo
-        for d in np.linspace(fDerivaInicio, fDerivaFin, num=dEvento[sEvento]):  # Rango deviva
+      for i in range(len(m)):                                                   # File index
+        for d in np.linspace(fDerivaInicio, fDerivaFin, num=dEvento[sEvento]):  # Drift range
           lJittering.append((i, round(d,10)))
-      # Generando lista que tiene muestra de items a generar espectrogramas, sin repeticion
+      # Generate a list that contains sample items to generate spectrograms, without repetition
       lMuestra = sample(lJittering, dEvento[sEvento])
-      # Crear carpetas de salida si no existen
+      # Create output folders if they do not exist
       fym.create_folders(sRutaSalida+sEvento)
-      # Generando espectrograms la cantidad de la muestra solicitada
+      # Generate spectrograms for the requested sample size
       for iArchivo, fDeriva in lMuestra:
-        # Abrir evento
+        # Get event file path
         sRuta = fym.archivos_canal_simple(sRutaEntrada+sEvento, m[iArchivo])
-        # Abrir los eventos
+        # Open the event
         tr = TSignal(sRuta)
-        # Preproceso
+        # Preprocess (variant 2)
         tr.preproceso2()  #<==============================================================================
-        # Normalizar señales
+        # Normalize signals
         tr.normaliza()
-        # Elimina ruido()
+        # Remove noise (optional)
         #tr.eliminaRuido(fRango=0.1, fTolerancia=1.0)
-        # Generación de nueva señal ==========================================================================
+        # Generate new signal (apply drifting/jittering)
         tr.daJittering(fDeriva)
-        # Espectrograma guarda en disco
+        # Save spectrogram to disk
         tr.espectrograma_guardar_canal(0, sRutaSalida+sEvento, 224,'_'+str(fDeriva))
-      # Eliminando de memoria variables
+      # Free variables from memory
       del lJittering
       del lMuestra
-    # Mensaje
+    # Message
     print("Fin de generación de eventos :", sEvento, fym.now_string())
 
-#=============================================== PROCESO ESPECTROGRAMA ESCENARIO 2 20HZ ============================================
-print("Inicio:", fym.now_string())
+#=============================================== SPECTROGRAM PROCESS SCENARIO 2 20HZ ============================================
+print("Start:", fym.now_string())
 #generarEventoDrifting(FLAG_DA.sRutaEntrada, 'escenario2/spectrograms224_00 210708 20Hz+da_drifting/', {'HY':2473, 'LP':2109, 'TC':488 ,'TR':2215}, 0.01, 0.1)
 #generarEventoDrifting(FLAG_DA.sRutaEntrada, 'escenario2/spectrograms224_00 210708 20Hz+da_drifting/', {'HY':2473, 'LP':2109, 'TC':488 ,'TR':2215}, 0.001, 0.01)
 #generarEventoDrifting(FLAG_DA.sRutaEntrada, 'escenario2/spectrograms224_00 210708 20Hz+da_drifting/', {'HY':2473, 'LP':2109, 'TC':488 ,'TR':2215}, 0.0001, 0.001)
@@ -107,6 +107,6 @@ print("Inicio:", fym.now_string())
 #generarEventoDrifting(FLAG_DA.sRutaEntrada, 'escenario2/spectrograms224_00 210708 20Hz+da_drifting/', {'HY':13419, 'LP':13419, 'TC':13419 ,'TR':13419, 'VT':13419}, 0.01, 0.1)
 #generarEventoDrifting(FLAG_DA.sRutaEntrada, 'escenario2/spectrograms224_00 210708 20Hz+da_drifting/', {'HY':13419, 'LP':13419, 'TC':13419 ,'TR':13419, 'VT':13419}, 0.0001, 0.001)
 generaMuestraArchivos('escenario2/spectrograms224_00/', 'escenario2/spectrograms224_00 muestra/', {'HY':2686, 'LP':2686, 'TC':2686 ,'TR':2686, 'VT':2686})
-print("Fin   :", fym.now_string())
+print("End   :", fym.now_string())
 
 

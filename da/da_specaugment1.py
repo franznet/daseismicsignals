@@ -5,47 +5,47 @@ import fym.util as fym
 from fym.signal import TSignal, TListSignal
 from random import randint, choice
 
-# Constantes
+# Constants
 RUTA_ENTRADA    ='escenario2/data/'
 RUTA_SALIDA     ='escenario2/01/data_augmentation_specaugment1/'
 EVENTO_ESTUDIO  =['HY','LP','TC','TR','VT']
 
 def generarEvento(sRutaEntrada:str, sRutaSalida:str, lEvento:list, iCantidad:int, fFrecuenciaPorcentaje:float=0.1, iFrecuenciaCantidad:int=2, fTiempoPorcentaje:float=0.1, iTiempoCantidad:int=2):
-  """Genera imagenes de espectrograma mediante algoritmos geneticos.
+  """Generate spectrogram images using SpecAugment.
   Args:
-      sRutaEntrada (str): Carpeta donde se encuentan los eventos ordenados por carpetas Evento
-      sRutaSalida (str): Carpeta donde se generaran los nuevos eventos generados
-      lEvento (list): Eventos a considerarse en la generación
-      iPorcentajeTiempoMax (int): Porcentaje de tiempo máximo al crear el arreglo de ceros
-      iCantidad (int): Cantidad
+      sRutaEntrada (str): Folder where events are stored in event subfolders
+      sRutaSalida (str): Folder where generated events will be saved
+      lEvento (list): Events to consider during generation
+      iPorcentajeTiempoMax (int): Maximum time percentage when creating zero padding
+      iCantidad (int): Count
   """
   sCarpetaProceso=str(fFrecuenciaPorcentaje)+'-'+str(iFrecuenciaCantidad)+' '+str(fTiempoPorcentaje)+'-'+str(iTiempoCantidad)
-  # Leyendo eventos
+  # Reading events
   for sEvento in lEvento:
-    # Leyendo lista de archivo de eventos desde carpeta
+    # Read event file list from folder
     m=fym.lista_archivos_simple(sRutaEntrada+sEvento)
     if len(m)>0:
-      # Crear carpetas de salida si no existen
+      # Create output folders if they do not exist
       fym.create_folders(sRutaSalida+sCarpetaProceso+'/'+sEvento)
-      # Generando la cantidad de eventos solicitado
+      # Generate the requested number of events
       for iCont in range(iCantidad):
-        # Elegir aleatoriamente un evento y generar rutas de archivo
+        # Choose a random event and generate file paths
         sRuta = fym.archivos_canal_simple(sRutaEntrada+sEvento, m[randint(0, len(m)-1)])
-        # Abrir los eventos
+        # Open the event
         tr = TSignal(sRuta)
-        # Preproceso
+        # Preprocess
         tr.preproceso()
-        # Normalizar señales
+        # Normalize signals
         tr.normaliza()
-        # Elimina ruido()
+        # Remove noise()
         tr.eliminaRuido(fRango=0.1, fTolerancia=1.0)
-        # Generación de nuevo espectrograma ==========================================================================
+        # Generate new spectrogram ==========================================================================
         tr.daEspectrogramaSpecAugment(0, sRutaSalida+sCarpetaProceso+'/'+sEvento, 224, '-'+str(iCont+1),
                                       fFrecuenciaPorcentaje=fFrecuenciaPorcentaje, iFrecuenciaCantidad=iFrecuenciaCantidad,
                                       fTiempoPorcentaje=fTiempoPorcentaje, iTiempoCantidad=iTiempoCantidad) #,'sColor='red')
-    # Mensaje
-    print("Generado eventos:", sEvento, fym.now_string())
+    # Message
+    print("Generated events:", sEvento, fym.now_string())
 
-print("Inicio:", fym.now_string())
+print("Start:", fym.now_string())
 generarEvento(RUTA_ENTRADA, RUTA_SALIDA, EVENTO_ESTUDIO, iCantidad=2000, fFrecuenciaPorcentaje=0.1, iFrecuenciaCantidad=2, fTiempoPorcentaje=0.1, iTiempoCantidad=2)
-print("Fin   :", fym.now_string())
+print("End   :", fym.now_string())

@@ -5,12 +5,12 @@ import fym.util as fym
 from fym.signal import TSignal, TListSignal
 import random
 
-# Constantes
+# Constants
 RUTA_ENTRADA    ='escenario2/data/'
 RUTA_SALIDA     ='escenario2/01/data_augmentation_ag/'
 EVENTO_ESTUDIO  =['HY','LP','TC','TR','VT']
 
-# Retorna lista con indices aleatorio no repetidos de rango preveido. Incluye rangos más
+# Returns a list of unique random integer indices within the specified range
 def listaEnteroAleatorio(iMenor:int, iMaximo:int, iElementos:int):
   lLista=[]
   while len(lLista)<iElementos:
@@ -20,73 +20,73 @@ def listaEnteroAleatorio(iMenor:int, iMaximo:int, iElementos:int):
   lLista.sort()
   return lLista
 
-# Genera eventos nuevos por AG con detalle del proceso
+# Generate new events using GA with detailed processing
 def generarEventoDetalle(sRutaEntrada:str, sRutaSalida:str, lEvento:list, iSegmentoTamanio:int, iSegmentoCruce:int, iCantidad:int):
-  """Genera imagenes de sismograma y espectrograma mediante algoritmos geneticos.
+  """Generate seismogram and spectrogram images using genetic algorithms.
   Args:
-      sRutaEntrada (str): Carpeta donde se encuentan los eventos ordenados por carpetas Evento
-      sRutaSalida (str): Carpeta donde se generaran los nuevos eventos generados
-      lEvento (list): Eventos a considerarse en la generación
-      iSegmentoTamanio (int): Tamano del segmento en segundos
-      iSegmentoCruce (int):   Cantidad de segmentos para cruzamiento
-      iCantidad (int): [description]
+      sRutaEntrada (str): Folder where events are stored in event subfolders
+      sRutaSalida (str): Folder where generated events will be saved
+      lEvento (list): Events to consider for generation
+      iSegmentoTamanio (int): Segment size in seconds
+      iSegmentoCruce (int): Number of segments for crossover
+      iCantidad (int): Number of events to generate
   """
-  # Leyendo eventos
+  # Reading events
   for sEvento in lEvento:
-    # Leyendo lista de archivo de evetos desde carpeta
+    # Read list of event files from folder
     m=fym.lista_archivos_simple(sRutaEntrada+sEvento)
     if len(m)>0:
-      # Crear carpetas de salida si no existen
+      # Create output folders if they do not exist
       fym.create_folders(sRutaSalida+str(iSegmentoTamanio)+'_'+str(iSegmentoCruce)+'/'+sEvento)
-      # Generando la cantidad de eventos solicitado
+      # Generating the requested number of events
       iContador=0
       while iContador<iCantidad:
-        # Generar números aleatorios
+        # Generate random indices
         lEventoIndice=listaEnteroAleatorio(0,len(m)-1,2) # Mismo tiempo(26,74) #[1, 2] #
-        # Escoger eventos al azar (SELECTION)
+        # Select events at random (SELECTION)
         evento1, evento2=m[lEventoIndice[0]], m[lEventoIndice[1]]
-        # Generar rutas de los elegidos
+        # Build file paths for the selected events
         sRuta1, sRuta2 = fym.archivos_canal_simple(sRutaEntrada+sEvento, evento1), fym.archivos_canal_simple(sRutaEntrada+sEvento, evento2)
-        # Abrir los eventos
+        # Open the events
         tr1, tr2 = TSignal(sRuta1), TSignal(sRuta2)
-        # Verificar tiempos
+        # Check durations
         if (tr1.duracion()//iSegmentoTamanio)<iSegmentoCruce or (tr2.duracion()//iSegmentoTamanio)<iSegmentoCruce:
-          continue  # Rechazar
-        # Preproceso
+          continue  # Reject
+        # Preprocess
         tr1.preproceso()
         tr2.preproceso()
-        # Normalizar señales
+        # Normalize signals
         tr1.normaliza()
         tr2.normaliza()
-        # Generación de nueva señal ==========================================================================
+        # Generate new signal ==================================================================
         tr3=tr2.copy()
-        # Generando listas de puntos de tiempo de cruzamiento y tuplas de rangos correspondientes (CROSS OVER)
+        # Generate lists of crossover time points and corresponding range tuples (CROSS OVER)
         if tr1.duracion()<tr2.duracion():
           lTiempo=listaEnteroAleatorio(0, (tr1.duracion()//iSegmentoTamanio)-1, iSegmentoCruce)
         else:
           lTiempo=listaEnteroAleatorio(0, (tr2.duracion()//iSegmentoTamanio)-1, iSegmentoCruce)
         lPunto = [(int(t*iSegmentoTamanio*tr1.traces[0].stats.sampling_rate), int((t+1)*iSegmentoTamanio*tr1.traces[0].stats.sampling_rate)) for t in lTiempo]
         for (x,y) in lPunto:
-          # Reemplazando segmento de cruzamiento
+          # Replace crossover segment
           tr3.traces[0].data[x:y]=tr1.traces[0].data[x:y]
-          # Promediando segmento(MUTATION - XOR)
+          # Average the segment (MUTATION - XOR)
           for i in range(x+1, y):
             tr3.traces[0].data[i]=(tr3.traces[0].data[i]+tr3.traces[0].data[i-1])/2.0
-        # Desplegar sismogramas
+        # Display seismograms
         #tr1.plot(size=(1500, 200), color='red',   number_of_ticks=10, tick_format='%I:%M %p')
         #tr2.plot(size=(1500, 200), color='green', number_of_ticks=tr2.duracion(), tick_format='%I:%M %p')
         #tr3.plot(size=(1500, 200), number_of_ticks=tr3.duracion(), tick_format='%I:%M %p')
 
-        # Desplegar sismograma matplotlib
+        # Display seismogram using matplotlib
         fig = plt.figure(figsize=(25,8))
-        ax = fig.add_subplot(3, 1, 1) # Grafico1
+        ax = fig.add_subplot(3, 1, 1) # Plot1
         ax.plot(tr1.traces[0].times("matplotlib"), tr1.traces[0].data, "b-")
         ax.set_title('Evento'+str(lEventoIndice[0])+' ['+sRuta1+'] '+str(tr1.duracion())+'s')
         for (x,y) in lPunto: ax.plot(tr1.traces[0].times("matplotlib")[x:y], tr1.traces[0].data[x:y], "r-")
-        ax = fig.add_subplot(3, 1, 2) # Grafico2
+        ax = fig.add_subplot(3, 1, 2) # Plot2
         ax.plot(tr2.traces[0].times("matplotlib"), tr2.traces[0].data, "b-")
         ax.set_title('Evento'+str(lEventoIndice[1])+' ['+sRuta2+'] '+str(tr2.duracion())+'s')
-        ax = fig.add_subplot(3, 1, 3) # Grafico3
+        ax = fig.add_subplot(3, 1, 3) # Plot3
         ax.plot(tr3.traces[0].times("matplotlib"), tr3.traces[0].data, "b-")
         ax.set_title('EventoResultado '+str(tr3.duracion())+'s '+str(lTiempo) )
         for (x,y) in lPunto: ax.plot(tr3.traces[0].times("matplotlib")[x:y], tr3.traces[0].data[x:y], "r-")
@@ -95,85 +95,85 @@ def generarEventoDetalle(sRutaEntrada:str, sRutaSalida:str, lEvento:list, iSegme
         #plt.show()
         plt.savefig(sRutaSalida+str(iSegmentoTamanio)+'_'+str(iSegmentoCruce)+'/'+sEvento+'/'+evento1+'_'+evento2+'_sismograma.png')
 
-        # Desplegar espectrogramas
+        # Display spectrograms
         #tr1.spectrogram(title='Evento'+str(lEventoIndice[0])+' '+str(tr1.duracion())+'s', cmap='jet', per_lap=0.95, wlen=1, samp_rate=100)
         #tr2.spectrogram(title='Evento'+str(lEventoIndice[1])+' '+str(tr2.duracion())+'s', cmap='jet', per_lap=0.95, wlen=1, samp_rate=100)
         #tr3.spectrogram(title='EventoRes1 '+str(tr3.duracion())+'s '+str(lTiempo), cmap='jet', per_lap=0.95, wlen=1, samp_rate=100)
 
-        # Desplegar espectrograma matplotlib
+        # Display spectrogram using matplotlib
         fig = plt.figure(figsize=(25,6))
-        plt.subplot(131)  # Grafico1
+        plt.subplot(131)  # Plot1
         ax=plt.gca()
         ax.set_title('Evento'+str(lEventoIndice[0])+' '+str(tr1.duracion())+'s')
         tr1.traces[0].spectrogram(show=False,axes=ax, cmap='jet', samp_rate=100.0, per_lap=0.95, wlen=1)
-        plt.subplot(132)  # Grafico2
+        plt.subplot(132)  # Plot2
         ax=plt.gca()
         ax.set_title('Evento'+str(lEventoIndice[1])+' '+str(tr2.duracion())+'s')
         tr2.traces[0].spectrogram(show=False,axes=ax, cmap='jet', samp_rate=100.0, per_lap=0.95, wlen=1)
-        plt.subplot(133)  # Grafico3
+        plt.subplot(133)  # Plot3
         ax=plt.gca()
         ax.set_title('EventoResultado '+str(tr3.duracion())+'s '+str(lTiempo) )
         tr3.traces[0].spectrogram(show=False,axes=ax, cmap='jet', samp_rate=100.0, per_lap=0.95, wlen=1)
         #plt.show()
         plt.savefig(sRutaSalida+str(iSegmentoTamanio)+'_'+str(iSegmentoCruce)+'/'+sEvento+'/'+evento1+'_'+evento2+'_espectrograma.png')
 
-        # Liberar memoria
+        # Free memory
         plt.clf()
-        # Evitar que muestre la imagen en modo interactivo
+        # Prevent interactive display
         plt.close('all')
 
-        # Incrementar contador
+        # Increment counter
         iContador+=1
 
-# Genera eventos nuevos por AG, espectrograma
+# Generate new events using GA (spectrogram saving)
 def generarEvento(sRutaEntrada:str, sRutaSalida:str, lEvento:list, iSegmentoTamanio:int, iSegmentoCruce:int, iCantidad:int):
-  """Genera imagenes de sismograma y espectrograma mediante algoritmos geneticos.
+  """Generate seismogram and spectrogram images using genetic algorithms.
   Args:
-      sRutaEntrada (str): Carpeta donde se encuentan los eventos ordenados por carpetas Evento
-      sRutaSalida (str): Carpeta donde se generaran los nuevos eventos generados
-      lEvento (list): Eventos a considerarse en la generación
-      iSegmentoTamanio (int): Tamano del segmento en segundos
-      iSegmentoCruce (int):   Cantidad de segmentos para cruzamiento
-      iCantidad (int): [description]
+      sRutaEntrada (str): Folder where events are stored in event subfolders
+      sRutaSalida (str): Folder where generated events will be saved
+      lEvento (list): Events to consider for generation
+      iSegmentoTamanio (int): Segment size in seconds
+      iSegmentoCruce (int): Number of segments for crossover
+      iCantidad (int): Number of events to generate
   """
-  # Leyendo eventos
+  # Reading events
   for sEvento in lEvento:
-    # Leyendo lista de archivo de evetos desde carpeta
+    # Read list of event files from folder
     m=fym.lista_archivos_simple(sRutaEntrada+sEvento)
     if len(m)>0:
-      # Crear carpetas de salida si no existen
+      # Create output folders if they do not exist
       fym.create_folders(sRutaSalida+str(iSegmentoTamanio)+'_'+str(iSegmentoCruce)+'/'+sEvento)
-      # Generando la cantidad de eventos solicitado
+      # Generating the requested number of events
       iContador=0
       while iContador<iCantidad:
-        # Generar números aleatorios
+        # Generate random indices
         lEventoIndice=listaEnteroAleatorio(0,len(m)-1,2) # Mismo tiempo(26,74) #[1, 2] #
-        # Escoger eventos al azar (SELECTION)
+        # Select events at random (SELECTION)
         evento1, evento2=m[lEventoIndice[0]], m[lEventoIndice[1]]
-        # Generar rutas de los elegidos
+        # Build file paths for the selected events
         sRuta1, sRuta2 = fym.archivos_canal_simple(sRutaEntrada+sEvento, evento1), fym.archivos_canal_simple(sRutaEntrada+sEvento, evento2)
-        # Abrir los eventos
+        # Open the events
         tr1, tr2 = TSignal(sRuta1), TSignal(sRuta2)
-        # Preproceso
+        # Preprocess
         tr1.preproceso()
         tr2.preproceso()
-        # Normalizar señales
+        # Normalize signals
         tr1.normaliza()
         tr2.normaliza()
-        # Elimina ruido()
+        # Remove noise
         tr1.eliminaRuido(fRango=0.1, fTolerancia=1.0)
         tr2.eliminaRuido(fRango=0.1, fTolerancia=1.0)
-        # Genera nuevo evento por AG
+        # Generate new event via GA
         tr3=tr1.daAlgortimoGenetico(tr2, iSegmentoTiempo=iSegmentoTamanio, iSegmentoCruce=iSegmentoCruce)
         if tr3 is not None:
-          # Espectrograma guarda en disco
+          # Save spectrogram to disk
           tr3.espectrograma_guardar_canal(0, sRutaSalida+str(iSegmentoTamanio)+'_'+str(iSegmentoCruce)+'/'+sEvento, 224,'-'+str(iContador+1))
-          # Incrementar contador
+          # Increment counter
           iContador+=1
-    # Mensaje
+    # Message
     print("Generado eventos:", sEvento, fym.now_string())
 
 
-print("Inicio:", fym.now_string())
+print("Start:", fym.now_string())
 generarEvento(RUTA_ENTRADA, RUTA_SALIDA, EVENTO_ESTUDIO, iSegmentoTamanio=5, iSegmentoCruce=5, iCantidad=2686)
-print("Fin   :", fym.now_string())
+print("End  :", fym.now_string())
